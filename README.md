@@ -1,4 +1,14 @@
-# Multinex Node.js SDK
+<div align="center">
+  <h1>🛡️ Multinex Node.js SDK</h1>
+  <p><strong>The official security and governance SDK for Enterprise AI Agents.</strong></p>
+
+  [![npm version](https://img.shields.io/npm/v/@multinex/node-sdk.svg?style=flat-square&color=eab308)](https://www.npmjs.com/package/@multinex/node-sdk)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+  [![TypeScript Strict](https://img.shields.io/badge/TypeScript-Strict-3178c6.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+  [![Security: SOC2 Ready](https://img.shields.io/badge/Security-SOC2_Ready-10b981.svg?style=flat-square)](https://multinex.ai/security)
+</div>
+
+<br/>
 
 The official **Multinex Node.js SDK** provides the foundation for integrating Multinex as a secure governance layer around your autonomous AI agents. 
 
