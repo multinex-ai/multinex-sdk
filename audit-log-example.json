@@ -1,0 +1,14 @@
+{
+  "agentId": "mnxs_x8f9a2pql",
+  "timestamp": "2026-02-28T14:30:00.000Z",
+  "action": "DELETE",
+  "policyResults": [
+    {
+      "policyName": "salesforce-data-protection",
+      "passed": false,
+      "reason": "Unauthorized attempt to delete CRM record. Immutable enforcement applied."
+    }
+  ],
+  "status": "blocked",
+  "signature": "sig_9b7a3f8c2e1d04b6f7a8c9d0e1f2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0"
+}

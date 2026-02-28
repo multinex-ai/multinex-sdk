@@ -1,0 +1,36 @@
+{
+  "name": "@multinex/node-sdk",
+  "version": "1.0.0",
+  "description": "Multinex Node.js SDK: Secure AI Agent Governance and Auditing",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prestart": "npm run build",
+    "start": "ts-node examples/basic-agent.ts",
+    "start:salesforce": "ts-node examples/salesforce-integration.ts",
+    "gateway": "ts-node examples/mock-gateway.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4",
+    "@types/node": "^22.5.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/multinex/multinex-node-sdk.git"
+  },
+  "keywords": [
+    "multinex",
+    "ai",
+    "agents",
+    "security",
+    "governance",
+    "audit",
+    "soc2"
+  ]
+}

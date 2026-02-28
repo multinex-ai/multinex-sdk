@@ -1,0 +1,20 @@
+# Multinex Policy Definition (Example)
+# Demonstrates how enterprise buyers define their governance rules.
+
+version: "1.0"
+name: "salesforce-data-protection"
+description: "Prevents unauthorized destruction or exfiltration of CRM data by autonomous agents."
+rules:
+  - id: "prevent-delete"
+    action: "deny"
+    condition:
+      match: "regex"
+      field: "payload.action"
+      pattern: "^(DELETE|DROP|TRUNCATE)$"
+    alert: true
+  - id: "require-mfa-for-export"
+    action: "audit"
+    condition:
+      match: "exact"
+      field: "payload.action"
+      value: "EXPORT_LEADS"
