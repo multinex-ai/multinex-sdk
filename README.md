@@ -94,4 +94,4 @@ if (response.auditLog.status === 'blocked') {
 
 Ready to see the full platform in action? 
 
-[Request a Demo](https://multinex.ai/request-demo)
+[Inquire About a Demo](mailto:sales@multinex.ai?subject=Enterprise%20Demo%20Request)
