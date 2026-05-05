@@ -1,92 +1,137 @@
-import * as http from 'http';
-import * as crypto from 'crypto';
-
-/**
- * Local Mock Gateway for Multinex SDK Examples
- * 
- * This server simulates the behavior of the real Multinex platform.
- * It intercepts /agents/register and /execute to return valid JSON
- * formatted exactly like the actual Sovereign Node Gateway would.
- */
+import * as crypto from "crypto";
+import * as http from "http";
+import type { AuditLog, PolicyResult } from "../src";
 
 const PORT = 8080;
 
-const server = http.createServer((req, res) => {
-  // CORS & JSON setup
-  res.setHeader('Content-Type', 'application/json');
+type RequestBody = {
+  agentId?: string;
+  prompt?: string;
+  content?: string;
+  context?: { readonly [key: string]: unknown };
+  subject?: "input" | "output";
+  action?: string;
+  status?: "allowed" | "blocked" | "audited";
+  policyResults?: PolicyResult[];
+};
 
-  let body = '';
-  req.on('data', chunk => {
-    body += chunk.toString();
+function readRequestBody(req: http.IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.on("data", (chunk: Buffer) => {
+      body += chunk.toString("utf8");
+    });
+    req.on("end", () => resolve(body));
+    req.on("error", reject);
   });
+}
 
-  req.on('end', () => {
-    if (req.method === 'POST' && req.url === '/v1/agents/register') {
-      // Simulate Agent Registration
-      const agentId = `mnxs_${crypto.randomBytes(6).toString('hex')}`;
+function parseBody(body: string): RequestBody {
+  if (!body) return {};
+  const parsed: unknown = JSON.parse(body);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return {};
+  }
+  return parsed as RequestBody;
+}
+
+function policyCheck(payload: RequestBody): PolicyResult[] {
+  const prompt = payload.prompt ?? "";
+  const content = typeof payload.content === "string" ? payload.content : "";
+  const action = String(payload.context?.action ?? payload.action ?? "");
+  const haystack = `${prompt} ${content} ${action}`.toLowerCase();
+
+  if (haystack.includes("delete") || haystack.includes("credit card")) {
+    return [
+      {
+        policyName: "destructive-action-control",
+        passed: false,
+        reason: "Request matched a destructive or sensitive-data policy.",
+      },
+    ];
+  }
+
+  return [{ policyName: "destructive-action-control", passed: true }];
+}
+
+function createAuditLog(payload: RequestBody, policyResults: PolicyResult[]): AuditLog {
+  const blocked = policyResults.some((result) => !result.passed);
+  return {
+    agentId: payload.agentId ?? `agent_${crypto.randomBytes(4).toString("hex")}`,
+    timestamp: new Date().toISOString(),
+    action: payload.subject ? `model_${payload.subject}` : payload.action ?? "agent_execution",
+    policyResults,
+    status: blocked ? "blocked" : payload.status ?? "allowed",
+    requestId: `req_${crypto.randomBytes(6).toString("hex")}`,
+    signature: `sig_${crypto.randomBytes(32).toString("hex")}`,
+  };
+}
+
+const server = http.createServer(async (req, res) => {
+  res.setHeader("Content-Type", "application/json");
+
+  try {
+    const body = parseBody(await readRequestBody(req));
+
+    if (req.method === "POST" && req.url === "/v1/agents/register") {
       res.writeHead(200);
-      res.end(JSON.stringify({ id: agentId }));
+      res.end(JSON.stringify({ id: `agent_${crypto.randomBytes(6).toString("hex")}` }));
       return;
     }
 
-    if (req.method === 'POST' && req.url === '/v1/execute') {
-      // Simulate Policy Execution Engine
-      const payload = JSON.parse(body || '{}');
-      const action = payload.context?.action || 'prompt_execution';
-      const prompt = payload.prompt || '';
-      
-      const policyResults = [];
-      let isBlocked = false;
-
-      // Simulate Salesforce Data Protection Policy
-      if (prompt.toLowerCase().includes('delete') || action === 'DELETE') {
-        policyResults.push({
-          policyName: 'salesforce-data-protection',
-          passed: false,
-          reason: 'Unauthorized attempt to delete CRM record. Immutable enforcement applied.'
-        });
-        isBlocked = true;
-      } else {
-        policyResults.push({
-          policyName: 'salesforce-data-protection',
-          passed: true
-        });
-      }
-
-      const status = isBlocked ? 'blocked' : 'allowed';
-      const output = isBlocked 
-        ? 'Execution blocked by Multinex policy layer.'
-        : `Simulated successful execution of: "${prompt}"`;
-
-      const auditLog = {
-        agentId: payload.agentId,
-        timestamp: new Date().toISOString(),
-        action,
-        policyResults,
-        status,
-        signature: 'sig_' + crypto.randomBytes(32).toString('hex')
-      };
-
+    if (req.method === "POST" && req.url === "/v1/execute") {
+      const policyResults = policyCheck(body);
+      const auditLog = createAuditLog(body, policyResults);
+      const blocked = auditLog.status === "blocked";
       res.writeHead(200);
-      res.end(JSON.stringify({ output, auditLog }));
+      res.end(JSON.stringify({
+        output: blocked
+          ? "Execution blocked by Multinex policy."
+          : `Simulated execution: ${body.prompt ?? "ok"}`,
+        auditLog,
+      }));
       return;
     }
 
-    // Default 404
+    if (req.method === "POST" && req.url === "/v1/guardrails/evaluate") {
+      const policyResults = policyCheck(body);
+      const auditLog = createAuditLog(body, policyResults);
+      const blocked = auditLog.status === "blocked";
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        status: auditLog.status,
+        output: blocked ? "Blocked by Multinex policy." : "Allowed by Multinex policy.",
+        redactedContent: blocked ? "[blocked]" : body.content,
+        auditLog,
+      }));
+      return;
+    }
+
+    if (req.method === "POST" && req.url === "/v1/audit/events") {
+      const auditLog = createAuditLog(body, body.policyResults ?? []);
+      res.writeHead(200);
+      res.end(JSON.stringify({ auditLog }));
+      return;
+    }
+
     res.writeHead(404);
-    res.end(JSON.stringify({ error: 'Not Found' }));
-  });
+    res.end(JSON.stringify({ error: "Not Found" }));
+  } catch (error: unknown) {
+    res.writeHead(400);
+    res.end(JSON.stringify({
+      error: error instanceof Error ? error.message : "Invalid request",
+    }));
+  }
 });
 
-export function startMockGateway(callback: () => void) {
+export function startMockGateway(callback: () => void): void {
   server.listen(PORT, callback);
 }
 
-export function stopMockGateway() {
+export function stopMockGateway(): void {
   server.close();
 }
 
-// If run directly (e.g. from docker-compose)
 if (require.main === module) {
   startMockGateway(() => {
     console.log(`[Mock Gateway] Listening on http://localhost:${PORT}`);

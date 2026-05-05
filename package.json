@@ -1,32 +1,50 @@
 {
   "name": "@multinex/node-sdk",
-  "version": "1.0.0",
-  "description": "Multinex Node.js SDK: Secure AI Agent Governance and Auditing",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "version": "1.1.0",
+  "description": "Official Multinex Node.js SDK for AI model guardrails, policy decisions, and audit trails",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "require": "./dist/src/index.js",
+      "default": "./dist/src/index.js"
+    }
+  },
+  "files": [
+    "dist/src",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
+    "test": "npm run build && node --test dist/tests/*.test.js",
     "prestart": "npm run build",
     "start": "ts-node examples/basic-agent.ts",
-    "start:salesforce": "ts-node examples/salesforce-integration.ts",
-    "gateway": "ts-node examples/mock-gateway.ts"
+    "start:model": "ts-node examples/model-guardrails.ts",
+    "api:stub": "ts-node examples/mock-gateway.ts"
   },
   "dependencies": {
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@types/node": "^22.5.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.5.4",
-    "@types/node": "^22.5.0"
+    "typescript": "^5.5.4"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/multinex/multinex-node-sdk.git"
+    "url": "https://github.com/multinex-ai/multinex-sdk.git"
   },
   "keywords": [
     "multinex",
     "ai",
+    "llm",
+    "model-guardrails",
     "agents",
     "security",
     "governance",
