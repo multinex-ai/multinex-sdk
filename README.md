@@ -1,22 +1,24 @@
 <div align="center">
-  <h1>🛡️ Multinex Node.js SDK</h1>
-  <p><strong>The official security and governance SDK for Enterprise AI Agents.</strong></p>
+  <h1>Multinex Node.js SDK</h1>
+  <p><strong>Provider-agnostic guardrails, policy decisions, and audit trails for AI model workflows.</strong></p>
 
   [![npm version](https://img.shields.io/npm/v/@multinex/node-sdk.svg?style=flat-square&color=eab308)](https://www.npmjs.com/package/@multinex/node-sdk)
   [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
   [![TypeScript Strict](https://img.shields.io/badge/TypeScript-Strict-3178c6.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-  [![Security: SOC2 Ready](https://img.shields.io/badge/Security-SOC2_Ready-10b981.svg?style=flat-square)](https://multinex.ai/security)
 </div>
 
-<br/>
+## What This SDK Does
 
-The official **Multinex Node.js SDK** provides the foundation for integrating Multinex as a secure governance layer around your autonomous AI agents. 
+`@multinex/node-sdk` lets applications place Multinex policy checks around AI model calls, tool calls, and autonomous workflows. It does not require a specific model provider. Use it with hosted LLMs, local models, agent frameworks, background jobs, or custom inference services.
 
-This repository serves as both the functional SDK and a demonstration of how to wrap autonomous agents—whether built internally or via third-party systems like Salesforce Agents—to ensure they operate strictly within defined policy boundaries, leaving a cryptographically secure audit trail for all actions.
+Core capabilities:
 
-## What is Multinex?
-
-Multinex is the security and governance layer for enterprise AI. By routing your agent's execution intents through the Multinex Gateway or local Sovereign Node, you can enforce immutable policies (e.g., preventing CRM data deletion, redacting PII) and generate verifiable SOC2/EU AI Act-compliant audit logs before the action reaches your data layer.
+- Register an application, agent, or model workflow with named policies.
+- Evaluate model inputs before a provider call.
+- Evaluate model outputs before they reach users or downstream systems.
+- Wrap any model call with a single `wrapModel` helper.
+- Preserve signed audit events for allow, block, and audit-only outcomes.
+- Keep application code provider-agnostic and free of Multinex implementation details.
 
 ## Installation
 
@@ -24,74 +26,190 @@ Multinex is the security and governance layer for enterprise AI. By routing your
 npm install @multinex/node-sdk
 ```
 
-*(Note: During evaluation/beta, you can clone this repository and build from source.)*
+```bash
+export MULTINEX_API_KEY="mnx_sk_live_..."
+```
 
-## Architecture
+For local evaluation, clone this repository and run the mock gateway examples.
 
-*(An architecture diagram is available in `architecture.svg` / `architecture.png`)*
+```bash
+npm install
+npm test
+npm start
+npm run start:model
+```
 
-**High-Level Flow:**
-`Enterprise Agent / Application` ➔ `Multinex SDK` ➔ `Multinex Runtime (Gateway / Sovereign Node)` ➔ `Audit Log System`
+## Quick Start
 
-The SDK serves as an interceptor. If a payload violates the configured governance policy, the action is blocked before execution.
+```ts
+import { MultinexClient } from "@multinex/node-sdk";
 
-## Quick Start Examples
+const multinex = new MultinexClient({
+  apiKey: process.env.MULTINEX_API_KEY,
+});
 
-This repository includes functional examples that execute against a local mock gateway to demonstrate policy enforcement without needing a live Multinex API key.
+await multinex.registerAgent({
+  name: "customer-support-workflow",
+  policies: ["sensitive-data-control", "destructive-action-control"],
+  environment: "production",
+});
 
-1. **Install Dependencies & Build the SDK**
-   ```bash
-   npm install
-   npm run build
-   ```
+const result = await multinex.wrapModel({
+  input: "Draft a concise customer update.",
+  model: {
+    provider: "generic-provider",
+    model: "customer-support-model",
+    operation: "chat",
+  },
+  run: async (prompt) => {
+    // Call OpenAI, Anthropic, Gemini, a local model, or any custom provider here.
+    return `Model response for: ${prompt}`;
+  },
+});
 
-2. **Run the Standard Agent Example**
-   ```bash
-   npm start
-   ```
-   *This executes a benign prompt and an unauthorized prompt to demonstrate basic policy checks.*
+console.log(result.output);
+console.log(result.inputDecision.auditLog.status);
+console.log(result.outputDecision.auditLog.status);
+```
 
-3. **Run the Salesforce Integration Example**
-   ```bash
-   npm run start:salesforce
-   ```
-   *This simulates an autonomous agent attempting to update and delete CRM records, showcasing Multinex blocking the destructive action based on the `salesforce-data-protection` policy.*
+## Public API
 
-## SDK Usage
+### `new MultinexClient(options)`
 
-```typescript
-import { MultinexClient } from '@multinex/node-sdk';
-
+```ts
 const client = new MultinexClient({
-  endpoint: 'https://gateway.multinex.ai/v1',
-  apiKey: process.env.MULTINEX_API_KEY
+  apiKey: process.env.MULTINEX_API_KEY,
+  endpoint: "https://api.multinex.ai/v1",
+  timeoutMs: 15000,
+});
+```
+
+Options:
+
+| Option | Description |
+| --- | --- |
+| `apiKey` | Multinex API key. Defaults to `MULTINEX_API_KEY`. |
+| `endpoint` | Public API base URL. Defaults to `https://api.multinex.ai/v1` or `MULTINEX_API_ENDPOINT`. |
+| `timeoutMs` | Request timeout. Defaults to `15000`. |
+| `fetch` | Optional custom fetch implementation for tests, serverless, or worker runtimes. |
+| `clientName` | Optional request client label. |
+
+### `registerAgent(config)`
+
+Registers the application, agent, or model workflow and attaches configured policies.
+
+```ts
+await client.registerAgent({
+  name: "research-workflow",
+  policies: ["pii-redaction", "source-control"],
+  environment: "production",
+});
+```
+
+### `evaluateModelInput(request)`
+
+Checks a prompt or message array before a model call.
+
+```ts
+const decision = await client.evaluateModelInput({
+  content: [
+    { role: "system", content: "You are a support assistant." },
+    { role: "user", content: "Summarize this ticket." },
+  ],
+  model: { provider: "generic", model: "support-model", operation: "chat" },
 });
 
-// 1. Register the Agent and apply governance policies
-const { id: agentId } = await client.registerAgent({
-  name: 'customer-support-bot',
-  policies: ['pii-redaction', 'financial-data-firewall'],
-  environment: 'production'
-});
-
-// 2. Execute agent actions through the security layer
-const response = await client.execute({
-  prompt: 'Delete the customer account from the database.',
-  context: { action: 'DELETE' }
-});
-
-if (response.auditLog.status === 'blocked') {
-  console.log('Action denied by policy:', response.auditLog.policyResults[0].reason);
+if (decision.status === "blocked") {
+  throw new Error(decision.auditLog.policyResults[0]?.reason ?? "Blocked");
 }
 ```
 
-## Security Model Overview
+### `evaluateModelOutput(request)`
 
-- **Policy Enforcement:** Rules are defined declaratively by enterprise administrators and evaluated securely on the Multinex Gateway. 
-- **Audit Logging:** Every autonomous action generates a signed `Handshake Sigil`. Real deployments anchor this to an Ed25519 keypair for offline verification by compliance teams.
+Checks model output before returning it to a user, tool, queue, or database.
 
-## Enterprise Demo
+```ts
+const outputDecision = await client.evaluateModelOutput({
+  content: modelOutput,
+  model: { provider: "generic", model: "support-model", operation: "chat" },
+});
+```
 
-Ready to see the full platform in action? 
+### `wrapModel(input)`
 
-[Inquire About a Demo](mailto:sales@multinex.ai?subject=Enterprise%20Demo%20Request)
+Runs both input and output checks around any provider call.
+
+```ts
+const guarded = await client.wrapModel({
+  input: "Write a release note.",
+  run: async (prompt) => callYourModel(prompt),
+});
+```
+
+### `execute(request)`
+
+Compatibility helper for agent-action flows that already route actions through Multinex.
+
+```ts
+const response = await client.execute({
+  prompt: "Update the lead status to Contacted.",
+  context: { action: "UPDATE", target: "Lead" },
+});
+```
+
+### `audit(event)`
+
+Records an auditable event that happened outside a direct model call.
+
+```ts
+await client.audit({
+  action: "tool_call_completed",
+  status: "audited",
+  policyResults: [{ policyName: "tool-use-policy", passed: true }],
+});
+```
+
+## Model Compatibility
+
+The SDK is intentionally model-neutral. It wraps your model call instead of embedding a provider client. That means the same policy contract can be used with:
+
+- Chat completion APIs.
+- Tool-calling agents.
+- Retrieval and classification workflows.
+- Local or hosted model runtimes.
+- Custom gateways, queues, and background workers.
+
+Public request metadata may include `provider`, `model`, `operation`, and `modality` so audit logs stay useful without exposing private platform details.
+
+## Local Examples
+
+The repository includes a mock public API server for SDK development and demonstrations.
+
+```bash
+npm start
+npm run start:model
+```
+
+The mock server only demonstrates the SDK contract. It is not a copy of the production service.
+
+## Security Notes
+
+- Never commit API keys or provider credentials.
+- Evaluate input before model execution when a workflow can mutate data, call tools, or retrieve sensitive context.
+- Evaluate output before returning it to users or storing it.
+- Store only policy evidence and operational metadata needed for audit.
+- Keep provider secrets in your application or secret manager; this SDK does not need them.
+
+## Development
+
+```bash
+npm install
+npm run build
+npm test
+```
+
+The TypeScript compiler runs in strict mode, and API responses are validated at runtime before the SDK returns them.
+
+## Demo
+
+[Inquire about a Multinex demo](mailto:sales@multinex.ai?subject=Multinex%20SDK%20Demo%20Request)

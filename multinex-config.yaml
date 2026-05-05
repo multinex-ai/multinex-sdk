@@ -1,18 +1,16 @@
-# Official Multinex Public Configuration Schema (Example)
-# This file defines the required configuration structure for the Multinex Runtime.
+# Multinex SDK Public Configuration Example
 
 agent:
-  name: "sales-assistant-agent"
+  name: "model-router"
   policies:
-    - "salesforce-data-protection"
-    - "pii-redaction"
-    - "financial-data-firewall"
+    - "sensitive-data-control"
+    - "destructive-action-control"
 
-runtime:
-  endpoint: "https://gateway.multinex.ai/v1"
+api:
+  endpoint: "https://api.multinex.ai/v1"
   environment: "production"
-  logLevel: "audit"
+  timeoutMs: 15000
 
 telemetry:
   enabled: true
-  exportDestination: "splunk"
+  exportDestination: "customer-audit-sink"

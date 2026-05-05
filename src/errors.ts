@@ -1,17 +1,33 @@
+import type { JsonValue } from "./types";
+
 export class MultinexError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "MultinexError";
+  }
+}
+
+export class MultinexConfigurationError extends MultinexError {
   constructor(message: string) {
     super(message);
-    this.name = 'MultinexError';
+    this.name = "MultinexConfigurationError";
+  }
+}
+
+export class MultinexValidationError extends MultinexError {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "MultinexValidationError";
   }
 }
 
 export class MultinexAPIError extends MultinexError {
-  public statusCode: number;
-  public responseData: any;
+  public readonly statusCode: number;
+  public readonly responseData?: JsonValue;
 
-  constructor(message: string, statusCode: number, responseData?: any) {
+  constructor(message: string, statusCode: number, responseData?: JsonValue) {
     super(message);
-    this.name = 'MultinexAPIError';
+    this.name = "MultinexAPIError";
     this.statusCode = statusCode;
     this.responseData = responseData;
   }

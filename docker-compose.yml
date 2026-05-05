@@ -1,23 +1,12 @@
 version: '3.8'
 
 services:
-  # This represents the enterprise application wrapping the agent
+  # Example application using the public SDK contract.
   example-agent-service:
     build:
       context: .
       dockerfile: Dockerfile
     environment:
-      - MULTINEX_API_ENDPOINT=http://multinex-runtime-stub:8080/v1
+      - MULTINEX_API_ENDPOINT=http://multinex-api-stub:8080/v1
       - MULTINEX_API_KEY=mnx_sk_test_demo
-      - AGENT_NAME=salesforce-automation-agent
-    depends_on:
-      - multinex-runtime-stub
-
-  # This represents a simulated local Multinex sovereign node or gateway
-  # Note: The real Multinex runtime contains proprietary engines not included here
-  multinex-runtime-stub:
-    image: node:20-alpine
-    command: >
-      sh -c "echo 'Multinex stub running on port 8080' && npx http-server -p 8080"
-    ports:
-      - "8080:8080"
+      - AGENT_NAME=model-router

@@ -12,8 +12,8 @@
         <path d="M 400 180 L 450 180" stroke="#ffffff" stroke-width="2" marker-end="url(#arrow)"/>
 
         <rect x="450" y="150" width="150" height="60" rx="8" fill="#0f172a" stroke="#eab308" stroke-width="2" stroke-dasharray="4"/>
-        <text x="525" y="180">Multinex Runtime</text>
-        <text x="525" y="198" font-size="12" fill="#94a3b8">(Abstracted)</text>
+        <text x="525" y="180">Policy API</text>
+        <text x="525" y="198" font-size="12" fill="#94a3b8">Public contract</text>
 
         <path d="M 600 180 L 650 180" stroke="#ffffff" stroke-width="2" marker-end="url(#arrow)"/>
 

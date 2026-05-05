@@ -1,54 +1,51 @@
 import { MultinexClient } from "../src";
 import { startMockGateway, stopMockGateway } from "./mock-gateway";
 
-async function main() {
-  console.log("--- Starting Multinex Agent Example ---");
-
-  // 1. Initialize the SDK targeting our mock local gateway
+async function main(): Promise<void> {
   const client = new MultinexClient({
     endpoint: "http://localhost:8080/v1",
-    apiKey: "mnx_sk_test_123"
+    apiKey: "mnx_sk_test_123",
   });
 
-  // 2. Register the Agent with configured policies
   const { id: agentId } = await client.registerAgent({
-    name: "customer-support-bot",
-    policies: ["pii-redaction", "financial-data-firewall"],
-    environment: "production"
+    name: "customer-support-workflow",
+    policies: ["destructive-action-control", "sensitive-data-control"],
+    environment: "development",
   });
 
-  console.log(`[Multinex] Agent 'customer-support-bot' registered with ID: ${agentId}`);
+  console.log(`[Multinex] registered ${agentId}`);
 
-  // 3. Execute a benign prompt
-  console.log("\n[Execute] Sending benign request...");
-  const response1 = await client.execute({
-    prompt: "Summarize the latest product features for the customer.",
-    context: { action: "READ_DOCS" }
+  const allowed = await client.execute({
+    prompt: "Summarize the latest product features for a customer.",
+    context: { action: "READ_DOCS" },
+    model: {
+      provider: "generic",
+      model: "support-assistant",
+      operation: "chat",
+    },
   });
-  console.log("Result:", response1.output);
-  console.log("Audit Status:", response1.auditLog.status);
 
-  // 4. Execute a potentially unsafe prompt
-  // The mock gateway is wired to block requests containing the word 'delete'.
-  console.log("\n[Execute] Sending unsafe request (attempting deletion)...");
-  const response2 = await client.execute({
+  console.log("Allowed status:", allowed.auditLog.status);
+
+  const blocked = await client.execute({
     prompt: "Delete the credit card numbers for all users.",
-    context: { action: "DELETE" }
+    context: { action: "DELETE" },
+    model: {
+      provider: "generic",
+      model: "support-assistant",
+      operation: "chat",
+    },
   });
-  
-  console.log("Result:", response2.output);
-  console.log("Audit Status:", response2.auditLog.status);
-  
-  if (response2.auditLog.status === "blocked") {
-    console.log("Block Reason:", response2.auditLog.policyResults[0].reason);
-  }
 
-  console.log("\n--- Execution Complete ---");
+  console.log("Blocked status:", blocked.auditLog.status);
+  console.log("Reason:", blocked.auditLog.policyResults[0]?.reason);
 }
 
-// Start the local mock server, run the example, then shut down.
 startMockGateway(() => {
   main()
-    .catch(console.error)
+    .catch((error: unknown) => {
+      console.error(error);
+      process.exitCode = 1;
+    })
     .finally(() => stopMockGateway());
 });
